@@ -158,11 +158,19 @@ open class RSASignerConfiguration internal constructor(): DSL.Data() {
 
 
 }
+
+open class MLSignerConfiguration internal constructor(): DSL.Data() {
+    var digest: Digest? = null; set(v) { digestSpecified = true; field = v }
+    internal var digestSpecified = false
+}
+
 open class SignerConfiguration internal constructor(): DSL.Data() {
     /** Algorithm-specific configuration for a returned ECDSA signer. Ignored for RSA keys. */
     open val ec = childOrDefault(::ECSignerConfiguration)
     /** Algorithm-specific configuration for a returned RSA signer. Ignored for ECDSA keys. */
     open val rsa = childOrDefault(::RSASignerConfiguration)
+
+    open val ml = childOrDefault(::MLSignerConfiguration)
 }
 
 open class UnlockPromptConfiguration: DSL.Data() {

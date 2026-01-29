@@ -57,6 +57,8 @@ sealed class CryptoPublicKey : PemEncodable<Asn1Sequence>, Identifiable {
                 +BitString(iosEncoded)
             }
         }
+
+        is ML -> TODO("Not Yet Implemented")
     }
 
 
@@ -386,7 +388,63 @@ sealed class CryptoPublicKey : PemEncodable<Asn1Sequence>, Identifiable {
 
             override val oid = KnownOIDs.ecPublicKey
         }
+
     }
+
+    data class ML (
+        val variant : MLDSAVariant,
+        private var _publicKeyBytes : ByteArray
+    ) : CryptoPublicKey() {
+
+        init {
+            _publicKeyBytes = _publicKeyBytes.copyOf()
+        }
+
+        val publicKeyBytes
+            get () = _publicKeyBytes.copyOf()
+
+        override val canonicalPEMBoundary: String = PEM_BOUNDARY
+
+        override val didEncoded: String by lazy {
+           "$PREFIX_DID_KEY:"  +  (UVarInt(variant.multikeyId()).encodeToByteArray() + _publicKeyBytes)
+                        .multibaseEncode(MultiBase.Base.BASE58_BTC)
+        }
+
+        private fun MLDSAVariant.multikeyId() = when (this) {
+            MLDSAVariant.MLDSA44 -> 1207u
+            MLDSAVariant.MLDSA65 -> TODO()
+            MLDSAVariant.MLDSA87 -> TODO()
+
+        }
+
+        override val iosEncoded: ByteArray
+            get() = TODO("Not yet implemented")
+
+        override val oid: ObjectIdentifier
+            get() = TODO("Not yet implemented")
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other == null || this::class != other::class) return false
+
+            other as ML
+
+            return publicKeyBytes.contentEquals(other.publicKeyBytes)
+        }
+
+        override fun hashCode(): Int {
+            var result = variant.hashCode()
+            result = 31 * result + publicKeyBytes.contentHashCode()
+            result = 31 * result + canonicalPEMBoundary.hashCode()
+            result = 31 * result + _publicKeyBytes.contentHashCode()
+            result = 31 * result + didEncoded.hashCode()
+            result = 31 * result + iosEncoded.contentHashCode()
+            result = 31 * result + oid.hashCode()
+            return result
+        }
+    }
+
+
 }
 
 interface SpecializedCryptoPublicKey {

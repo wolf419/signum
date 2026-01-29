@@ -55,6 +55,8 @@ val SignatureAlgorithm.secKeyAlgorithm: SecKeyAlgorithm
                 }
             }
         }
+
+        is SignatureAlgorithm.MLDSA -> TODO()
     }!!
 
 val SpecializedSignatureAlgorithm.secKeyAlgorithm
@@ -90,6 +92,8 @@ val SignatureAlgorithm.secKeyAlgorithmPreHashed: SecKeyAlgorithm
                 }
             }
         }
+
+        is SignatureAlgorithm.MLDSA -> TODO()
     }!!
 
 val SpecializedSignatureAlgorithm.secKeyAlgorithmPreHashed
@@ -100,6 +104,7 @@ val CryptoSignature.iosEncoded
     get() = when (this) {
         is CryptoSignature.EC -> this.encodeToDer()
         is CryptoSignature.RSA -> this.rawByteArray
+        is CryptoSignature.ML -> TODO()
     }
 
 fun CryptoPublicKey.toSecKey() = catching {
@@ -109,6 +114,7 @@ fun CryptoPublicKey.toSecKey() = catching {
             kSecAttrKeyType to when (this@toSecKey) {
                 is CryptoPublicKey.EC -> kSecAttrKeyTypeEC
                 is CryptoPublicKey.RSA -> kSecAttrKeyTypeRSA
+                is CryptoPublicKey.ML -> TODO()
             })
         corecall {
             SecKeyCreateWithData(this@toSecKey.iosEncoded.toNSData().let(::giveToCF), attr, error)
@@ -136,6 +142,8 @@ fun CryptoPrivateKey.WithPublicKey<*>.toSecKey(): KmmResult<OwnedCFValue<SecKeyR
                     kSecAttrKeySizeInBits mapsTo this@toSecKey.publicKey.bits.number.toInt()
                     asPKCS1.encodeToDer()
                 }
+
+                is CryptoPrivateKey.ML -> TODO()
             }
         }
         corecall {

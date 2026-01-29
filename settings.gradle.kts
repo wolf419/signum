@@ -29,6 +29,7 @@ develocity {
 // Include the local build logic as a composite build
 includeBuild("build-logic")
 
+include("iaik-m2")
 include(":internals")
 include(":indispensable-asn1")
 include(":indispensable-oids")

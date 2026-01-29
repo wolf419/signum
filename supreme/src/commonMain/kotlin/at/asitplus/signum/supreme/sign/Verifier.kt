@@ -50,6 +50,11 @@ sealed interface Verifier {
         final override val publicKey: CryptoPublicKey.RSA
     )
     : Verifier
+
+    sealed class ML (
+        final override val signatureAlgorithm: SignatureAlgorithm.MLDSA,
+        final override val publicKey: CryptoPublicKey.ML
+    ) : Verifier
 }
 fun Verifier.verify(data: ByteArray, sig: CryptoSignature) =
     verify(SignatureInput(data), sig)
@@ -61,6 +66,36 @@ typealias ConfigurePlatformVerifier = DSLConfigureFn<PlatformVerifierConfigurati
 sealed interface PlatformVerifier: Verifier
 /** A distinguishing interface for verifiers that are implemented in pure Kotlin */
 sealed interface KotlinVerifier: Verifier
+
+
+@Throws(UnsupportedCryptoException::class)
+internal expect fun checkAlgorithmKeyCombinationSupportedByMLDSAPlatformVerifier
+            (signatureAlgorithm: SignatureAlgorithm.MLDSA, publicKey: CryptoPublicKey.ML,
+             config: PlatformVerifierConfiguration)
+
+internal expect fun verifyMLDSAImpl
+            (signatureAlgorithm: SignatureAlgorithm.MLDSA, publicKey: CryptoPublicKey.ML,
+             data: SignatureInput, signature: CryptoSignature.ML,
+             config: PlatformVerifierConfiguration)
+
+class PlatformMLDSAVerifier
+    internal constructor(signatureAlgorithm: SignatureAlgorithm.MLDSA, publicKey: CryptoPublicKey.ML,
+                            configure: ConfigurePlatformVerifier)
+    : Verifier.ML(signatureAlgorithm, publicKey), PlatformVerifier {
+
+    private val config = DSL.resolve(::PlatformVerifierConfiguration, configure)
+    init {
+        checkAlgorithmKeyCombinationSupportedByMLDSAPlatformVerifier(signatureAlgorithm, publicKey, config)
+    }
+
+    override fun verify(
+        data: SignatureInput,
+        sig: CryptoSignature) = catching {
+        require (sig is CryptoSignature.ML)
+        { "Attempted to validate non-ML signature using ML public key" }
+        return@catching verifyMLDSAImpl(signatureAlgorithm, publicKey, data, sig, config).let { Verifier.Success }
+    }
+}
 
 @Throws(UnsupportedCryptoException::class)
 internal expect fun checkAlgorithmKeyCombinationSupportedByECDSAPlatformVerifier
@@ -191,7 +226,29 @@ private fun SignatureAlgorithm.verifierForImpl
             else
                 verifierForImpl(publicKey, configure, allowKotlin)
         }
+
+        is SignatureAlgorithm.MLDSA -> {
+            if (publicKey !is CryptoPublicKey.ML)
+                KmmResult.failure(IllegalArgumentException("Non-ML public key passed to MLDSA algorithm"))
+            else
+                verifierForImpl(publicKey, configure, allowKotlin)
+        }
     }
+
+fun SignatureAlgorithm.MLDSA.verifierFor
+                (publicKey: CryptoPublicKey.ML, configure: ConfigurePlatformVerifier = null) =
+    verifierForImpl(publicKey, configure, allowKotlin = true)
+
+fun SignatureAlgorithm.MLDSA.platformVerifierFor
+            (publicKey: CryptoPublicKey.ML, configure: ConfigurePlatformVerifier = null) =
+    verifierForImpl(publicKey, configure, allowKotlin = false)
+
+private fun SignatureAlgorithm.MLDSA.verifierForImpl
+            (publicKey: CryptoPublicKey.ML, configure: ConfigurePlatformVerifier,
+             allowKotlin: Boolean): KmmResult<Verifier.ML> =
+            catching {
+                PlatformMLDSAVerifier(this, publicKey, configure)
+            }
 
 /**
  * Obtains a verifier.

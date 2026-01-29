@@ -83,12 +83,15 @@ sealed interface CryptoPrivateKey : PemEncodable<Asn1Sequence>, Identifiable {
 
                         is EC.WithoutPublicKey ->
                             throw Asn1StructuralException("Cannot PKCS#8-encode an EC key without curve. Use withCurve()!")
+
+                        is ML -> TODO("Not Yet Implemented")
                     }
                 }
                 +Asn1.OctetStringEncapsulating {
                     when (this@Impl) {
                         is RSA -> +asPKCS1.encodeToTlv()
                         is EC -> +asSEC1.encodeToTlv()
+                        is ML -> TODO("Not Yet Implemented")
                     }
                 }
                 attributes?.let {
@@ -513,6 +516,16 @@ sealed interface CryptoPrivateKey : PemEncodable<Asn1Sequence>, Identifiable {
                 }
             }
         }
+    }
+
+    class ML(
+        val privateKeyBytes : ByteArray,
+        attributes: List<Asn1Element>?,
+        override val publicKey: CryptoPublicKey.ML
+    ) : CryptoPrivateKey.Impl(attributes), WithPublicKey<CryptoPublicKey.ML> {
+
+        override val oid: ObjectIdentifier
+            get() = TODO("Not yet implemented")
     }
 
     companion object :

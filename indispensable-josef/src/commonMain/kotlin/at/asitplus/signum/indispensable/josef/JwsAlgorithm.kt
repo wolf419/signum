@@ -101,15 +101,37 @@ sealed class JwsAlgorithm(override val identifier: String) :
 
         }
 
+        sealed class ML(identifier: String, algorithm: SignatureAlgorithm) : Signature(identifier, algorithm) {
+            @Serializable(with = at.asitplus.signum.indispensable.josef.JwsAlgorithmSerializer::class)
+            data object MLDSA44 : ML("ML-DSA-44", SignatureAlgorithm.MLDSA(null, MLDSAVariant.MLDSA44))
+
+            @Serializable(with = at.asitplus.signum.indispensable.josef.JwsAlgorithmSerializer::class)
+            data object MLDSA65 : ML("ML-DSA-65", SignatureAlgorithm.MLDSA(null, MLDSAVariant.MLDSA65))
+
+            @Serializable(with = at.asitplus.signum.indispensable.josef.JwsAlgorithmSerializer::class)
+            data object MLDSA87 : ML("ML-DSA-87", SignatureAlgorithm.MLDSA(null, MLDSAVariant.MLDSA87))
+
+            companion object : Enumeration<ML> {
+                override val entries: Iterable<ML> by lazy {
+                    setOf(
+                        MLDSA44,
+                        MLDSA65,
+                        MLDSA87
+                    )
+                }
+
+            }
+        }
 
         open val digest: Digest?
             get() = when (algorithm) {
                 is SignatureAlgorithm.ECDSA -> (algorithm as SignatureAlgorithm.ECDSA).digest
                 is SignatureAlgorithm.RSA -> (algorithm as SignatureAlgorithm.RSA).digest
+                is SignatureAlgorithm.MLDSA -> (algorithm as SignatureAlgorithm.MLDSA).digest
             }
 
         companion object : Enumeration<Signature> {
-            override val entries: Collection<Signature> by lazy { EC.entries + RSA.entries }
+            override val entries: Collection<Signature> by lazy { EC.entries + RSA.entries + ML.entries}
             //convenience
             val ES256 = EC.ES256
             val ES384 = EC.ES384
@@ -121,6 +143,10 @@ sealed class JwsAlgorithm(override val identifier: String) :
             val PS384 = RSA.PS384
             val PS512 = RSA.PS512
             val NON_JWS_SHA1_WITH_RSA = RSA.NON_JWS_SHA1_WITH_RSA
+
+            val MLDSA44 = ML.MLDSA44
+            val MLDSA65 = ML.MLDSA65
+            val MLDSA87 = ML.MLDSA87
         }
 
     }
@@ -198,6 +224,12 @@ fun SignatureAlgorithm.toJwsAlgorithm(): KmmResult<JwsAlgorithm> = catching {
                 Digest.SHA512 -> JwsAlgorithm.Signature.PS512
                 else -> throw IllegalArgumentException("RSA-PSS with ${this.digest} is unsupported by JWS")
             }
+        }
+
+        is SignatureAlgorithm.MLDSA -> when (this.variant) {
+            MLDSAVariant.MLDSA44 -> JwsAlgorithm.Signature.MLDSA44
+            MLDSAVariant.MLDSA65 -> JwsAlgorithm.Signature.MLDSA65
+            MLDSAVariant.MLDSA87 -> JwsAlgorithm.Signature.MLDSA87
         }
     }
 }

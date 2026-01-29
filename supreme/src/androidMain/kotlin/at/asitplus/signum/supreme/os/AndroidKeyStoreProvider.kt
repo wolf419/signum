@@ -178,6 +178,8 @@ object AndroidKeyStoreProvider:
                     setAlgorithmParameterSpec(ECGenParameterSpec(algSpec.curve.jcaName))
                     setDigests(*algSpec.digests.map { it?.jcaName ?: KeyProperties.DIGEST_NONE }.toTypedArray())
                 }
+
+                is SigningKeyConfiguration.MLConfiguration -> TODO()
             }
             setCertificateNotBefore(Date.from(Instant.now()))
             setCertificateSubject(X500Principal("CN=$alias")) // TODO
@@ -216,6 +218,7 @@ object AndroidKeyStoreProvider:
         KeyPairGenerator.getInstance(when(config._algSpecific.v) {
             is SigningKeyConfiguration.RSAConfiguration -> KeyProperties.KEY_ALGORITHM_RSA
             is SigningKeyConfiguration.ECConfiguration -> KeyProperties.KEY_ALGORITHM_EC
+            is SigningKeyConfiguration.MLConfiguration -> TODO()
         }, "AndroidKeyStore").apply {
             initialize(spec)
         }.generateKeyPair()
@@ -270,6 +273,7 @@ object AndroidKeyStoreProvider:
                 }
                 SignatureAlgorithm.RSA(digest, padding)
             }
+            is CryptoPublicKey.ML -> TODO()
         }
 
         return@catching when (publicKey) {
@@ -281,6 +285,7 @@ object AndroidKeyStoreProvider:
                 AndroidKeystoreSigner.RSA(
                     jcaPrivateKey, alias, keyInfo, config, publicKey,
                     attestation, algorithm as SignatureAlgorithm.RSA)
+            is CryptoPublicKey.ML -> TODO()
         }
     }}
 

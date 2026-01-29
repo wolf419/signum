@@ -246,6 +246,8 @@ fun CryptoPublicKey.toCoseKey(
                     algorithm = algorithm
                 )
             }
+
+        is CryptoPublicKey.ML -> TODO()
     }
 
 

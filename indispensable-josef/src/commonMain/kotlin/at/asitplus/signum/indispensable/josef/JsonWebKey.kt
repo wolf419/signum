@@ -7,6 +7,7 @@ import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.CryptoPublicKey.EC.Companion.fromUncompressed
 import at.asitplus.signum.indispensable.ECCurve
+import at.asitplus.signum.indispensable.MLDSAVariant
 import at.asitplus.signum.indispensable.SecretExposure
 import at.asitplus.signum.indispensable.SpecializedCryptoPublicKey
 import at.asitplus.signum.indispensable.asn1.Asn1Integer
@@ -186,6 +187,14 @@ data class JsonWebKey(
     @SerialName("y")
     @Serializable(with = ByteArrayBase64UrlSerializer::class)
     val y: ByteArray? = null,
+
+    @SerialName("pub")
+    @Serializable(with = ByteArrayBase64UrlSerializer::class)
+    val publicKey: ByteArray? = null,
+
+    @SerialName("priv")
+    @Serializable(with = ByteArrayBase64UrlSerializer::class)
+    val privateKey: ByteArray? = null
 ) : SpecializedCryptoPublicKey, SpecializedSymmetricKey {
 
     /**
@@ -314,6 +323,11 @@ data class JsonWebKey(
                 ).apply { jwkId = keyId }
             }
 
+            JwkType.AKP -> {
+                val alg = algorithm as JwsAlgorithm.Signature.ML
+                CryptoPublicKey.ML(alg.toMLDSAVariant() , publicKey ?: ByteArray(3))
+            }
+
             else -> throw IllegalArgumentException("Illegal key type")
         }
     }
@@ -420,6 +434,14 @@ fun CryptoPublicKey.toJsonWebKey(keyId: String? = this.jwkId): JsonWebKey =
                 n = n.magnitude,
                 e = e.magnitude
             )
+
+        is CryptoPublicKey.ML ->
+            JsonWebKey(
+                type = JwkType.AKP,
+                keyId = keyId,
+                algorithm = variant.toJwsAlgorithm(),
+                publicKey = publicKeyBytes
+            )
     }
 
 /**
@@ -430,6 +452,18 @@ fun SymmetricKey<*, *, *>.toJsonWebKey(keyId: String? = this.jwkId): KmmResult<J
     JsonWebKey(algorithm = jwAlg, keyId = keyId, k = jsonWebKeyBytes.getOrNull())
 }
 
+fun MLDSAVariant.toJwsAlgorithm() : JsonWebAlgorithm? = when (this) {
+    MLDSAVariant.MLDSA44 -> JwsAlgorithm.Signature.MLDSA44
+    MLDSAVariant.MLDSA65 -> JwsAlgorithm.Signature.MLDSA65
+    MLDSAVariant.MLDSA87 -> JwsAlgorithm.Signature.MLDSA87
+}
+
+
+fun JwsAlgorithm.Signature.ML.toMLDSAVariant() : MLDSAVariant = when (this) {
+    JwsAlgorithm.Signature.ML.MLDSA44 -> MLDSAVariant.MLDSA44
+    JwsAlgorithm.Signature.ML.MLDSA65 -> MLDSAVariant.MLDSA65
+    JwsAlgorithm.Signature.ML.MLDSA87 -> MLDSAVariant.MLDSA87
+}
 
 private const val JWK_ID = "jwkIdentifier"
 

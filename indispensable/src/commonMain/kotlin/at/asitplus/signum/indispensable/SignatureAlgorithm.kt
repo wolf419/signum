@@ -7,6 +7,12 @@ enum class RSAPadding {
     PSS;
 }
 
+enum class MLDSAVariant {
+    MLDSA44,
+    MLDSA65,
+    MLDSA87
+}
+
 sealed interface SignatureAlgorithm: DataIntegrityAlgorithm {
 
     data class ECDSA(
@@ -50,6 +56,23 @@ sealed interface SignatureAlgorithm: DataIntegrityAlgorithm {
         }
     }
 
+    data class MLDSA (
+        /** The digest to apply to the data, or `null` to directly process the raw data. */
+        val digest: Digest?,
+        val variant : MLDSAVariant,
+    ) : SignatureAlgorithm {
+        companion object : Enumeration<MLDSA> {
+            override val entries: Iterable<MLDSA> by lazy {
+                setOf(
+                    MLDSA44,
+                    MLDSA65,
+                    MLDSA87
+                )
+            }
+
+        }
+    }
+
     companion object : Enumeration<SignatureAlgorithm> {
         val ECDSAwithSHA256 = ECDSA(Digest.SHA256, null)
         val ECDSAwithSHA384 = ECDSA(Digest.SHA384, null)
@@ -63,8 +86,12 @@ sealed interface SignatureAlgorithm: DataIntegrityAlgorithm {
         val RSAwithSHA384andPSSPadding = RSA(Digest.SHA384, RSAPadding.PSS)
         val RSAwithSHA512andPSSPadding = RSA(Digest.SHA512, RSAPadding.PSS)
 
+        val MLDSA44 = MLDSA(null, MLDSAVariant.MLDSA44)
+        val MLDSA65 = MLDSA(null, MLDSAVariant.MLDSA65)
+        val MLDSA87 = MLDSA(null, MLDSAVariant.MLDSA87)
+
         override val entries: Iterable<SignatureAlgorithm> by lazy {
-            ECDSA.entries + RSA.entries
+            ECDSA.entries + RSA.entries + MLDSA.entries
         }
 
     }

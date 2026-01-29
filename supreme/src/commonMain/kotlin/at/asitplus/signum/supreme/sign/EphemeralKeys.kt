@@ -27,6 +27,10 @@ open class EphemeralSigningKeyConfigurationBase internal constructor(): SigningK
         init { digests = Digest.entries.toSet(); paddings = RSAPadding.entries.toSet() }
     }
     override val rsa = _algSpecific.option(::RSAConfiguration)
+
+    class MLConfiguration internal constructor(): SigningKeyConfiguration.MLConfiguration()
+
+    override val ml = _algSpecific.option(::MLConfiguration)
 }
 
 @Suppress("NOTHING_TO_INLINE")
@@ -73,6 +77,15 @@ sealed interface EphemeralKey {
         @SecretExposure
         override fun exportPrivateKey(): KmmResult<CryptoPrivateKey.RSA>
     }
+
+    interface ML: EphemeralKey {
+        override val publicKey: CryptoPublicKey.ML
+        override fun signer(configure: DSLConfigureFn<EphemeralSignerConfiguration>): KmmResult<Signer.MLDSA>
+
+        @SecretExposure
+        override fun exportPrivateKey(): KmmResult<CryptoPrivateKey.ML>
+    }
+
     companion object {
         operator fun invoke(configure: DSLConfigureFn<EphemeralSigningKeyConfiguration> = null) =
             catching { makeEphemeralKey(DSL.resolve(::EphemeralSigningKeyConfiguration, configure)) }
@@ -81,6 +94,27 @@ sealed interface EphemeralKey {
 
 internal sealed class EphemeralKeyBase <PrivateKeyT>
     (internal val privateKey: PrivateKeyT): EphemeralKey {
+
+    abstract class ML<PrivateKeyT, SignerT: Signer.MLDSA> (
+        private val signerFactory: (EphemeralSignerConfiguration, PrivateKeyT, CryptoPublicKey.ML, SignatureAlgorithm.MLDSA)->SignerT,
+        privateKey: PrivateKeyT, override val publicKey: CryptoPublicKey.ML, val digests: Set<Digest>
+    ) : EphemeralKeyBase<PrivateKeyT>(privateKey), EphemeralKey.ML {
+
+        override fun signer(configure: DSLConfigureFn<EphemeralSignerConfiguration>): KmmResult<SignerT> = catching {
+            val config = DSL.resolve(::EphemeralSignerConfiguration, configure)
+            val alg = config.ml.v
+            val digest = when (alg.digestSpecified) {
+                true -> {
+                    require (digests.contains(alg.digest))
+                    { "Digest ${alg.digest} unsupported (supported: ${digests.joinToString(",")}" }
+                    alg.digest
+                }
+                false -> null
+            }
+
+            return@catching signerFactory(config, privateKey, publicKey, SignatureAlgorithm.MLDSA(digest, publicKey.variant))
+        }
+    }
 
     abstract class EC<PrivateKeyT, SignerT: Signer.ECDSA>(
         private val signerFactory: (EphemeralSignerConfiguration, PrivateKeyT, CryptoPublicKey.EC, SignatureAlgorithm.ECDSA)->SignerT,

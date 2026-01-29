@@ -271,6 +271,7 @@ fun SignatureAlgorithm.toX509SignatureAlgorithm() = catching {
                 else -> throw IllegalArgumentException("Digest ${this.digest} is unsupported by X.509 RSA-PSS")
             }
         }
+        is SignatureAlgorithm.MLDSA -> TODO("Not yet Implemented")
     }
 }
 

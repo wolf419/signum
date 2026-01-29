@@ -76,6 +76,7 @@ data class JwsSigned<out P : Any>(
                 when (val alg = header.algorithm) {
                     is JwsAlgorithm.Signature.EC -> CryptoSignature.EC.fromRawBytes(alg.ecCurve, this)
                     is JwsAlgorithm.Signature.RSA -> CryptoSignature.RSA(this)
+                    is JwsAlgorithm.Signature.ML -> CryptoSignature.ML(this)
                     else -> throw IllegalArgumentException("unsupported algorithm: $alg")
                 }
 

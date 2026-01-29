@@ -37,6 +37,7 @@ sealed class EphemeralSigner(internal val privateKey: OwnedCFValue<SecKeyRef>) :
         return@signCatching when (val pubkey = publicKey) {
             is CryptoPublicKey.EC -> CryptoSignature.EC.decodeFromDer(signatureBytes).withCurve(pubkey.curve)
             is CryptoPublicKey.RSA -> CryptoSignature.RSA(signatureBytes)
+            is CryptoPublicKey.ML -> TODO()
         }
     }
 
@@ -94,6 +95,7 @@ internal actual fun makeEphemeralKey(configuration: EphemeralSigningKeyConfigura
                     kSecAttrKeyType mapsTo kSecAttrKeyTypeRSA
                     kSecAttrKeySizeInBits mapsTo alg.bits
                 }
+                is SigningKeyConfiguration.MLConfiguration -> TODO()
             }
             kSecPrivateKeyAttrs mapsTo cfDictionaryOf(kSecAttrIsPermanent to false)
             kSecPublicKeyAttrs mapsTo cfDictionaryOf(kSecAttrIsPermanent to false)
@@ -123,6 +125,7 @@ internal actual fun makeEphemeralKey(configuration: EphemeralSigningKeyConfigura
                     alg.digests,
                     alg.paddings
                 )
+            is SigningKeyConfiguration.MLConfiguration -> TODO()
         }
     }
 }

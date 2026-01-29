@@ -11,7 +11,14 @@ import at.asitplus.signum.indispensable.jcaPSSParams
 import at.asitplus.signum.indispensable.jcaSignatureBytes
 import at.asitplus.signum.supreme.dsl.DSL
 import at.asitplus.signum.UnsupportedCryptoException
+import at.asitplus.signum.indispensable.Digest
+import iaik.security.pq.mldsa.MLDSAPublicKey
+import java.security.InvalidKeyException
+import java.security.KeyFactory
 import java.security.Signature
+import java.security.spec.X509EncodedKeySpec
+import kotlin.Throws
+import kotlin.sequences.forEach
 
 /**
  * Configures JVM-specific properties.
@@ -27,6 +34,28 @@ private fun getSigInstance(alg: String, p: String?) =
         null -> Signature.getInstance(alg)
         else -> Signature.getInstance(alg, p)
     }
+
+@Throws(UnsupportedCryptoException::class)
+internal actual fun checkAlgorithmKeyCombinationSupportedByMLDSAPlatformVerifier
+            (signatureAlgorithm: SignatureAlgorithm.MLDSA, publicKey: CryptoPublicKey.ML,
+             config: PlatformVerifierConfiguration) {
+            }
+
+internal actual fun verifyMLDSAImpl
+            (signatureAlgorithm: SignatureAlgorithm.MLDSA, publicKey: CryptoPublicKey.ML,
+             data: SignatureInput, signature: CryptoSignature.ML,
+             config: PlatformVerifierConfiguration) {
+                if (publicKey.variant != signatureAlgorithm.variant)
+                    throw InvalidKeyException("Specified variant does not match key")
+
+                getSigInstance("ML-DSA", config.provider).run {
+                    initVerify(publicKey.toJcaPublicKey().getOrThrow())
+                    data.data.forEach(this::update)
+                    val success = verify(signature.rawByteArray)
+                    if (!success)
+                        throw InvalidSignature("Signature is cryptographically invalid")
+                }
+            }
 
 @Throws(UnsupportedCryptoException::class)
 internal actual fun checkAlgorithmKeyCombinationSupportedByECDSAPlatformVerifier

@@ -34,10 +34,17 @@ import java.security.spec.*
 import javax.crypto.Cipher
 import javax.crypto.spec.OAEPParameterSpec
 import javax.crypto.spec.PSource
-
+import iaik.security.pq.provider.SecurityLevel
+import iaik.security.pq.mldsa.MLDSAPublicKey
 
 private val certificateFactoryMutex = Mutex()
 private val certFactory = CertificateFactory.getInstance("X.509")
+
+val MLDSAVariant.securityLevel get() = when (this) {
+    MLDSAVariant.MLDSA44 -> SecurityLevel.LEVEL2
+    MLDSAVariant.MLDSA65 -> SecurityLevel.LEVEL3
+    MLDSAVariant.MLDSA87 -> SecurityLevel.LEVEL5
+}
 
 val Digest.jcaPSSParams
     get() = when (this) {
@@ -58,8 +65,8 @@ fun SignatureAlgorithm.getJCASignatureInstance(provider: String? = null): KmmRes
     when (this) {
         is SignatureAlgorithm.ECDSA ->
             sigGetInstance("${this.digest.jcaAlgorithmComponent}withECDSA", provider)
-
         is SignatureAlgorithm.RSA -> getRSAPlatformSignatureInstance(provider)
+        is SignatureAlgorithm.MLDSA -> sigGetInstance("ML-DSA", provider)
     }
 }
 
@@ -74,6 +81,7 @@ fun SignatureAlgorithm.getJCASignatureInstancePreHashed(provider: String? = null
     when (this) {
         is SignatureAlgorithm.ECDSA -> sigGetInstance("NONEwithECDSA", provider)
         is SignatureAlgorithm.RSA -> throw UnsupportedOperationException("Pre-hashed RSA input is unsupported")
+        is SignatureAlgorithm.MLDSA -> sigGetInstance("ML-DSA", provider)
     }
 }
 
@@ -107,6 +115,7 @@ val ECCurve.jcaName
         ECCurve.SECP_521_R_1 -> "secp521r1"
     }
 
+
 fun ECCurve.Companion.byJcaName(name: String): ECCurve? = ECCurve.entries.find { it.jcaName == name }
 
 
@@ -115,6 +124,11 @@ fun CryptoPublicKey.getJcaPublicKey() = toJcaPublicKey()
 fun CryptoPublicKey.toJcaPublicKey() = when (this) {
     is CryptoPublicKey.EC -> toJcaPublicKey()
     is CryptoPublicKey.RSA -> toJcaPublicKey()
+    is CryptoPublicKey.ML -> toJcaPublicKey()
+}
+
+fun CryptoPublicKey.ML.toJcaPublicKey() : KmmResult<MLDSAPublicKey> = catching {
+    MLDSAPublicKey(publicKeyBytes)
 }
 
 @Deprecated("renamed", ReplaceWith("toJcaPublicKey()"), DeprecationLevel.ERROR)
@@ -164,6 +178,15 @@ fun CryptoPublicKey.RSA.Companion.fromJcaPublicKey(publicKey: RSAPublicKey): Kmm
 fun RSAPublicKey.toCryptoPublicKey(): KmmResult<CryptoPublicKey.RSA> =
     catching { CryptoPublicKey.RSA(modulus.toAsn1Integer(), publicExponent.toAsn1Integer()) }
 
+fun MLDSAPublicKey.toCryptoPublicKey() : KmmResult<CryptoPublicKey.ML> =
+    catching { CryptoPublicKey.ML(rawBytes.toMldsaVariant(), this.encoded)}
+
+fun ByteArray.toMldsaVariant() : MLDSAVariant = when(this.size) {
+    1312 -> MLDSAVariant.MLDSA44
+    1952 -> MLDSAVariant.MLDSA65
+    2592 -> MLDSAVariant.MLDSA87
+    else -> throw UnsupportedOperationException("MLDSA variant not supported")
+}
 
 @Deprecated("replaced by extension", ReplaceWith("publicKey.toCryptoPublicKey()"), DeprecationLevel.ERROR)
 fun CryptoPublicKey.Companion.fromJcaPublicKey(publicKey: PublicKey): KmmResult<CryptoPublicKey> =
@@ -173,6 +196,7 @@ fun PublicKey.toCryptoPublicKey(): KmmResult<CryptoPublicKey> =
     when (this) {
         is RSAPublicKey -> toCryptoPublicKey()
         is ECPublicKey -> toCryptoPublicKey()
+        is MLDSAPublicKey -> toCryptoPublicKey()
         else -> KmmResult.failure(IllegalArgumentException("Unsupported Key Type"))
     }
 
@@ -183,6 +207,7 @@ val CryptoSignature.jcaSignatureBytes: ByteArray
     get() = when (this) {
         is CryptoSignature.EC -> encodeToDer()
         is CryptoSignature.RSA -> rawByteArray
+        is CryptoSignature.ML -> rawByteArray
     }
 
 /**
@@ -191,11 +216,11 @@ val CryptoSignature.jcaSignatureBytes: ByteArray
 fun CryptoSignature.Companion.parseFromJca(
     input: ByteArray,
     algorithm: SignatureAlgorithm
-): CryptoSignature =
-    if (algorithm is SignatureAlgorithm.ECDSA)
-        CryptoSignature.EC.parseFromJca(input)
-    else
-        CryptoSignature.RSA.parseFromJca(input)
+): CryptoSignature = when (algorithm) {
+    is SignatureAlgorithm.ECDSA  -> CryptoSignature.EC.parseFromJca(input)
+    is SignatureAlgorithm.RSA -> CryptoSignature.RSA(input)
+    is SignatureAlgorithm.MLDSA -> CryptoSignature.ML.parseFromJca(input)
+}
 
 fun CryptoSignature.Companion.parseFromJca(
     input: ByteArray,
@@ -216,6 +241,9 @@ fun CryptoSignature.EC.Companion.parseFromJcaP1363(input: ByteArray) =
 
 fun CryptoSignature.RSA.Companion.parseFromJca(input: ByteArray) =
     CryptoSignature.RSA(input)
+
+fun CryptoSignature.ML.Companion.parseFromJca(input: ByteArray) =
+    CryptoSignature.ML(input)
 
 /**
  * Converts this [X509Certificate] to a [java.security.cert.X509Certificate].
@@ -244,6 +272,7 @@ fun CryptoPrivateKey.WithPublicKey<*>.toJcaPrivateKey(): KmmResult<PrivateKey> =
     val kf = when (this) {
         is CryptoPrivateKey.EC.WithPublicKey -> KeyFactory.getInstance("EC")
         is CryptoPrivateKey.RSA -> KeyFactory.getInstance("RSA")
+        is CryptoPrivateKey.ML -> TODO()
     }
     kf.generatePrivate(spec)!!
 }
@@ -262,6 +291,7 @@ fun ECPrivateKey.toCryptoPrivateKey(): KmmResult<CryptoPrivateKey.EC.WithPublicK
 
 fun RSAPrivateKey.toCryptoPrivateKey(): KmmResult<CryptoPrivateKey.RSA> =
     CryptoPrivateKey.RSA.decodeFromDerSafe(encoded)
+
 
 
 val SymmetricEncryptionAlgorithm<*, *, *>.jcaName: String

@@ -90,3 +90,17 @@ internal actual fun verifyRSAImpl
             throw InvalidSignature("Signature is cryptographically invalid")
     }
 }
+
+@Throws(UnsupportedCryptoException::class)
+internal actual fun checkAlgorithmKeyCombinationSupportedByMLDSAPlatformVerifier
+            (signatureAlgorithm: SignatureAlgorithm.MLDSA, publicKey: CryptoPublicKey.ML,
+             config: PlatformVerifierConfiguration) {
+}
+
+@JvmSynthetic
+internal actual fun verifyMLDSAImpl
+            (signatureAlgorithm: SignatureAlgorithm.MLDSA, publicKey: CryptoPublicKey.ML,
+             data: SignatureInput, signature: CryptoSignature.ML,
+             config: PlatformVerifierConfiguration) {
+    TODO()
+}

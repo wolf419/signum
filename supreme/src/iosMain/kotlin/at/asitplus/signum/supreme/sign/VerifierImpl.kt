@@ -16,6 +16,13 @@ import platform.Security.errSecVerifyFailed
 actual class PlatformVerifierConfiguration internal actual constructor() : DSL.Data()
 
 @Throws(UnsupportedCryptoException::class)
+internal actual fun checkAlgorithmKeyCombinationSupportedByMLDSAPlatformVerifier
+            (signatureAlgorithm: SignatureAlgorithm.MLDSA, publicKey: CryptoPublicKey.ML,
+             config: PlatformVerifierConfiguration)
+{
+}
+
+@Throws(UnsupportedCryptoException::class)
 internal actual fun checkAlgorithmKeyCombinationSupportedByECDSAPlatformVerifier
             (signatureAlgorithm: SignatureAlgorithm.ECDSA, publicKey: CryptoPublicKey.EC,
              config: PlatformVerifierConfiguration)
@@ -70,3 +77,10 @@ internal actual fun verifyRSAImpl
              data: SignatureInput, signature: CryptoSignature.RSA,
              config: PlatformVerifierConfiguration) =
 verifyImpl(signatureAlgorithm, publicKey, data, signature, config)
+
+internal actual fun verifyMLDSAImpl
+            (signatureAlgorithm: SignatureAlgorithm.MLDSA, publicKey: CryptoPublicKey.ML,
+             data: SignatureInput, signature: CryptoSignature.ML,
+             config: PlatformVerifierConfiguration) {
+                TODO()
+            }

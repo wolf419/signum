@@ -21,15 +21,18 @@ import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.signum.indispensable.toCryptoPublicKey
 import at.asitplus.signum.indispensable.toJcaCertificate
 import at.asitplus.signum.UnsupportedCryptoException
+import at.asitplus.signum.indispensable.SignatureAlgorithm.*
 import at.asitplus.signum.supreme.dsl.DSL
 import at.asitplus.signum.supreme.dsl.DSLConfigureFn
 import at.asitplus.signum.supreme.dsl.REQUIRED
+import at.asitplus.signum.supreme.os.JKSSigner.*
 import at.asitplus.signum.supreme.sign.EphemeralSigner
 import at.asitplus.signum.supreme.sign.JvmEphemeralSignerCompatibleConfiguration
 import at.asitplus.signum.supreme.sign.Signer
 import at.asitplus.signum.supreme.sign.SigningKeyConfiguration
 import at.asitplus.signum.supreme.sign.getKPGInstance
 import com.ionspin.kotlin.bignum.integer.base63.toJavaBigInteger
+import iaik.security.pq.mldsa.MLDSAPrivateKey
 import java.nio.channels.Channels
 import java.nio.channels.FileChannel
 import java.nio.channels.FileLock
@@ -42,6 +45,7 @@ import java.security.interfaces.RSAPrivateKey
 import java.security.spec.ECGenParameterSpec
 import java.security.spec.RSAKeyGenParameterSpec
 import org.kotlincrypto.random.CryptoRand
+import java.nio.file.FileAlreadyExistsException
 import kotlin.io.path.extension
 import kotlin.time.Clock
 import kotlin.time.Duration
@@ -133,6 +137,8 @@ class JKSProvider internal constructor (private val access: JKSAccessor)
                     Triple("RSA", RSAKeyGenParameterSpec(algSpec.bits, algSpec.publicExponent.toJavaBigInteger()), X509SignatureAlgorithm.RS256)
                 is SigningKeyConfiguration.ECConfiguration ->
                     Triple("EC", ECGenParameterSpec(algSpec.curve.jcaName), X509SignatureAlgorithm.ES256)
+
+                is SigningKeyConfiguration.MLConfiguration -> TODO()
             }
             val keyPair = getKPGInstance(jcaAlg, config.provider).run {
                 initialize(jcaSpec)
@@ -178,6 +184,8 @@ class JKSProvider internal constructor (private val access: JKSAccessor)
                 digest = if (config.rsa.v.digestSpecified) config.rsa.v.digest else Digest.SHA256,
                 padding = if (config.rsa.v.paddingSpecified) config.rsa.v.padding else RSAPadding.PSS),
             alias)
+
+        is CryptoPublicKey.ML -> TODO()
     }
 
     override suspend fun getSignerForKey(

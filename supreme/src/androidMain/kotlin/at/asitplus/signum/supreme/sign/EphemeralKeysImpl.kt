@@ -113,4 +113,5 @@ internal actual fun makeEphemeralKey(configuration: EphemeralSigningKeyConfigura
                 AndroidEphemeralKey.RSA(pair, alg.digests, alg.paddings)
             }
         }
+        is SigningKeyConfiguration.MLConfiguration -> TODO()
     }

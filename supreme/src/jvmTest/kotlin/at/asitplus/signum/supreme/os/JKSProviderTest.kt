@@ -127,6 +127,8 @@ val JKSProviderTest  by testSuite {
 
                 is SignatureAlgorithm.ECDSA ->
                     CryptoSignature.EC.parseFromJca(signature.jcaSignatureBytes) shouldBe signature
+
+                is SignatureAlgorithm.MLDSA -> TODO()
             }
 
             signer.signatureAlgorithm.let {

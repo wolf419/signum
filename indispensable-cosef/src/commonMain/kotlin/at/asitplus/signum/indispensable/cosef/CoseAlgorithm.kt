@@ -254,6 +254,8 @@ fun SignatureAlgorithm.toCoseAlgorithm(): KmmResult<CoseAlgorithm.Signature> = c
                 else -> throw UnsupportedCryptoException("RSA-PSS with ${this.digest} is unsupported by COSE")
             }
         }
+
+        is SignatureAlgorithm.MLDSA -> TODO()
     }
 }
 

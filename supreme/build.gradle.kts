@@ -60,6 +60,11 @@ kotlin {
             implementation(libs.securerandom) //fix composite build
         }
 
+        jvmMain.dependencies {
+            implementation("at.asitplus.thirdparty:iaik-jce:1.0.0")
+            implementation("at.asitplus.thirdparty:iaik-pq:1.0.0")
+        }
+
         androidMain.dependencies {
             implementation("androidx.biometric:biometric:1.2.0-alpha05")
         }

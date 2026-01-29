@@ -1,8 +1,10 @@
 package at.asitplus.signum.supreme.sign
 
+import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.*
 import at.asitplus.signum.indispensable.SecretExposure
+import at.asitplus.signum.supreme.os.PQJCAProviderInit
 import at.asitplus.signum.supreme.signCatching
 import com.ionspin.kotlin.bignum.integer.base63.toJavaBigInteger
 import java.security.KeyPair
@@ -13,6 +15,11 @@ import java.security.interfaces.RSAPrivateKey
 import java.security.spec.ECGenParameterSpec
 import java.security.spec.RSAKeyGenParameterSpec
 import javax.crypto.KeyAgreement
+import iaik.security.pq.mldsa.MLDSAAlgorithmParameterSpec
+import iaik.security.pq.mldsa.MLDSAPrivateKey
+import iaik.security.pq.provider.IaikPq
+import iaik.security.pq.provider.SecurityLevel
+import java.util.concurrent.atomic.AtomicBoolean
 
 actual class EphemeralSigningKeyConfiguration internal actual constructor(): EphemeralSigningKeyConfigurationBase() {
     var provider: String? = null
@@ -72,6 +79,18 @@ sealed class EphemeralSigner (internal val privateKey: PrivateKey, private val p
         @SecretExposure
         final override fun exportPrivateKey() = (privateKey as RSAPrivateKey).toCryptoPrivateKey()
     }
+
+    open class ML internal constructor(config: JvmEphemeralSignerCompatibleConfiguration, privateKey: PrivateKey,
+        override val publicKey: CryptoPublicKey.ML, override val signatureAlgorithm: SignatureAlgorithm.MLDSA
+    ): EphemeralSigner(privateKey, config.provider), Signer.MLDSA {
+
+        override fun parseFromJca(bytes: ByteArray) = CryptoSignature.ML.parseFromJca(bytes)
+
+        @SecretExposure
+        override fun exportPrivateKey(): KmmResult<CryptoPrivateKey.ML> {
+            TODO("Not yet implemented")
+        }
+    }
 }
 
 internal fun getKPGInstance(alg: String, provider: String? = null) =
@@ -98,6 +117,15 @@ internal sealed interface JVMEphemeralKey {
         @SecretExposure
         override fun exportPrivateKey() = privateKey.toCryptoPrivateKey()
     }
+
+    class ML(pair: KeyPair, variant: MLDSAVariant, digests: Set<Digest>)
+        : EphemeralKeyBase.ML<MLDSAPrivateKey, EphemeralSigner.ML>(EphemeralSigner::ML,
+        pair.private as MLDSAPrivateKey,  pair.public.toCryptoPublicKey().getOrThrow() as CryptoPublicKey.ML,
+            digests = digests)
+    {
+        @SecretExposure
+        override fun exportPrivateKey() = TODO()
+    }
 }
 
 internal actual fun makeEphemeralKey(configuration: EphemeralSigningKeyConfiguration) : EphemeralKey =
@@ -113,5 +141,12 @@ internal actual fun makeEphemeralKey(configuration: EphemeralSigningKeyConfigura
                 initialize(RSAKeyGenParameterSpec(alg.bits, alg.publicExponent.toJavaBigInteger()))
                 generateKeyPair()
             }.let { pair -> JVMEphemeralKey.RSA(pair, digests = alg.digests, paddings = alg.paddings) }
+        }
+        is SigningKeyConfiguration.MLConfiguration -> {
+            PQJCAProviderInit.ensureInstalled()
+            getKPGInstance("ML-DSA", configuration.provider).run {
+                initialize(MLDSAAlgorithmParameterSpec(alg.variant.securityLevel))
+                generateKeyPair()
+            }.let { pair -> JVMEphemeralKey.ML(pair, variant =  alg.variant, digests =  alg.digests) }
         }
     }

@@ -17,6 +17,7 @@ import kotlinx.serialization.encoding.Encoder
 enum class JwkType(val text: String) {
     EC("EC"),
     RSA("RSA"),
+    AKP("AKP"),
     SYM("oct");
 }
 

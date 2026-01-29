@@ -38,6 +38,8 @@ kotlin {
             dependencies {
                 api(bouncycastle("bcpkix"))
                 api(coroutines("jvm"))
+                implementation("at.asitplus.thirdparty:iaik-jce:1.0.0")
+                implementation("at.asitplus.thirdparty:iaik-pq:1.0.0")
             }
         }
     }

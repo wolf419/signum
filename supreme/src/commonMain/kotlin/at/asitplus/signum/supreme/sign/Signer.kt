@@ -12,6 +12,7 @@ import at.asitplus.signum.supreme.dsl.DSL
 import at.asitplus.signum.supreme.dsl.DSLConfigureFn
 import at.asitplus.signum.supreme.os.SigningProvider
 import com.ionspin.kotlin.bignum.integer.BigInteger
+import kotlin.collections.plus
 
 /** DSL for configuring a signing key.
  *
@@ -30,6 +31,9 @@ open class SigningKeyConfiguration internal constructor() : DSL.Data() {
 
     /** Generates an RSA key. */
     open val rsa = _algSpecific.option(::RSAConfiguration)
+
+    /** Generates an MLDSA key. */
+    open val ml = _algSpecific.option(::MLConfiguration)
 
     open class ECConfiguration internal constructor() : AlgorithmSpecific() {
         /** The [ECCurve] on which to generate the key. Defaults to [P-256][ECCurve.SECP_256_R_1] */
@@ -60,6 +64,11 @@ open class SigningKeyConfiguration internal constructor() : DSL.Data() {
         /** The public exponent to use. Defaults to F4.
          * This is treated as advisory, and may be ignored by some platforms. */
         var publicExponent: BigInteger = F4
+    }
+
+    open class MLConfiguration internal constructor() : AlgorithmSpecific() {
+        var variant: MLDSAVariant = MLDSAVariant.MLDSA44
+        open var digests: Set<Digest> = setOf(Digest.SHA512)
     }
 }
 
@@ -119,6 +128,15 @@ interface Signer {
         override fun exportPrivateKey(): KmmResult<CryptoPrivateKey.RSA>
     }
 
+    /** A [Signer] that signs using MLDSA. */
+    interface MLDSA : AlgTrait {
+        override val signatureAlgorithm: SignatureAlgorithm.MLDSA
+        override val publicKey: CryptoPublicKey.ML
+
+        @SecretExposure
+        override fun exportPrivateKey(): KmmResult<CryptoPrivateKey.ML>
+    }
+
     /** Some [Signer]s are retrieved from a signing provider, such as a key store, and have a string [alias]. */
     interface WithAlias : Signer {
         val alias: String
@@ -155,6 +173,7 @@ fun SignatureAlgorithm.signerFor(privateKey: CryptoPrivateKey.WithPublicKey<*>):
         when (this) {
             is SignatureAlgorithm.ECDSA -> this.signerFor(privateKey as CryptoPrivateKey.EC.WithPublicKey)
             is SignatureAlgorithm.RSA -> this.signerFor(privateKey as CryptoPrivateKey.RSA)
+            is SignatureAlgorithm.MLDSA -> TODO()
         }
     } else {
         KmmResult.failure(IllegalArgumentException("Algorithm and Key mismatch: ${this::class.simpleName} + ${privateKey::class.simpleName}"))

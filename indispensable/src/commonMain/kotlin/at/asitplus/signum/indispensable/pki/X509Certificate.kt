@@ -253,6 +253,7 @@ val CryptoSignature.x509Encoded
     get() = when (this) {
         is CryptoSignature.EC -> encodeToDer().encodeToAsn1BitStringPrimitive()
         is CryptoSignature.RSA -> encodeToTlv()
+        is CryptoSignature.ML -> TODO()
     }
 
 /**

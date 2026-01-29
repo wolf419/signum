@@ -65,5 +65,7 @@ fun SignatureAlgorithm.signerFor(
             publicKey = privateKey.publicKey as CryptoPublicKey.RSA,
             signatureAlgorithm = this
         )
+
+        is SignatureAlgorithm.MLDSA -> TODO()
     }
 }

@@ -221,6 +221,24 @@ sealed interface CryptoSignature : Asn1Encodable<Asn1Element> {
 
     }
 
+    class ML (private val rawBytes: ByteArray) : CryptoSignature, RawByteEncodable {
+        val signature: Asn1Primitive by lazy {
+            Asn1BitString(rawBytes).encodeToTlv()
+        }
+
+        override fun encodeToTlv() = signature
+
+        /** the raw bytes of the signature value */
+        override val rawByteArray get() = rawBytes.copyOf()
+
+        companion object : Asn1Decodable<Asn1Element, ML> {
+            override fun doDecode(src: Asn1Element): ML {
+                src as Asn1Primitive
+                return ML(src.asAsn1BitString().rawBytes)
+            }
+        }
+    }
+
     class RSA private constructor (rawBytes: ByteArray?, x509Element: Asn1Primitive?) : CryptoSignature, RawByteEncodable {
         constructor(rawBytes: ByteArray) : this(rawBytes, null)
         constructor(x509Element: Asn1Primitive) : this(null, x509Element)
@@ -263,7 +281,9 @@ sealed interface CryptoSignature : Asn1Encodable<Asn1Element> {
         @Throws(Asn1Exception::class)
         override fun doDecode(src: Asn1Element): CryptoSignature = runRethrowing {
             when (src.tag) {
-                Asn1Element.Tag.BIT_STRING -> RSA.decodeFromTlv(src)
+                // We need to be carefull here since MLDSA sig is also a bitstring
+                Asn1Element.Tag.BIT_STRING -> TODO("Not yet implemented")
+//              Asn1Element.Tag.BIT_STRING -> RSA.decodeFromTlv(src)
                 Asn1Element.Tag.SEQUENCE -> EC.decodeFromTlv(src)
 
                 else -> throw Asn1Exception("Unknown Signature Format")

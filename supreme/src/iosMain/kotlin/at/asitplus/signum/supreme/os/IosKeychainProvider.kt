@@ -403,6 +403,7 @@ object IosKeychainProvider: PlatformSigningProviderI<IosSigner, IosSignerConfigu
                         kSecAttrKeyType mapsTo kSecAttrKeyTypeRSA
                         kSecAttrKeySizeInBits mapsTo alg.bits
                     }
+                    is SigningKeyConfiguration.MLConfiguration -> TODO()
                 }
                 if (useSecureEnclave) {
                     kSecAttrTokenID mapsTo kSecAttrTokenIDSecureEnclave
@@ -470,6 +471,7 @@ object IosKeychainProvider: PlatformSigningProviderI<IosSigner, IosSignerConfigu
                 CryptoPublicKey.EC.fromAnsiX963Bytes(alg.curve, publicKeyBytes)
             is SigningKeyConfiguration.RSAConfiguration ->
                 CryptoPublicKey.RSA.fromPKCS1encoded(publicKeyBytes)
+            is SigningKeyConfiguration.MLConfiguration -> TODO()
         }
 
         val attestation = if (useSecureEnclave) {
@@ -510,6 +512,7 @@ object IosKeychainProvider: PlatformSigningProviderI<IosSigner, IosSignerConfigu
             algSpecific = when (val alg = config._algSpecific.v) {
                 is SigningKeyConfiguration.ECConfiguration -> IosKeyAlgSpecificMetadata.ECDSA(alg.digests)
                 is SigningKeyConfiguration.RSAConfiguration -> IosKeyAlgSpecificMetadata.RSA(alg.digests, alg.paddings)
+                is SigningKeyConfiguration.MLConfiguration -> TODO()
             }
         ).also { storeKeyMetadata(alias, it) }
 
@@ -521,6 +524,7 @@ object IosKeychainProvider: PlatformSigningProviderI<IosSigner, IosSignerConfigu
                 IosSigner.ECDSA(alias, publicKey, metadata, signerConfiguration)
             is CryptoPublicKey.RSA ->
                 IosSigner.RSA(alias, publicKey, metadata, signerConfiguration)
+            is CryptoPublicKey.ML -> TODO()
         }
     }.also {
         val e = it.exceptionOrNull()
@@ -548,6 +552,7 @@ object IosKeychainProvider: PlatformSigningProviderI<IosSigner, IosSignerConfigu
         return@catching when (publicKey) {
             is CryptoPublicKey.EC -> IosSigner.ECDSA(alias, publicKey, metadata, config)
             is CryptoPublicKey.RSA -> IosSigner.RSA(alias, publicKey, metadata, config)
+            is CryptoPublicKey.ML -> TODO()
         }
     }}
 
